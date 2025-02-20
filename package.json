@@ -3,12 +3,15 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "postinstall": "patch-package"
   },
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@executeautomation/playwright-mcp-server": "^0.2.7"
+    "@executeautomation/playwright-mcp-server": "^0.2.7",
+    "patch-package": "^8.0.0",
+    "postinstall-postinstall": "^2.1.0"
   }
 }
