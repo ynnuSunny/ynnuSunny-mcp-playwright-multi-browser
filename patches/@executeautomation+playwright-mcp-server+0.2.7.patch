@@ -12,10 +12,10 @@ index a5a3ca4..d0b8643 100644
                      width: { type: "number", description: "Viewport width in pixels (default: 1920)" },
                      height: { type: "number", description: "Viewport height in pixels (default: 1080)" },
 diff --git a/node_modules/@executeautomation/playwright-mcp-server/dist/toolsHandler.js b/node_modules/@executeautomation/playwright-mcp-server/dist/toolsHandler.js
-index 0844df1..ae8241e 100644
+index 0844df1..448e6d6 100644
 --- a/node_modules/@executeautomation/playwright-mcp-server/dist/toolsHandler.js
 +++ b/node_modules/@executeautomation/playwright-mcp-server/dist/toolsHandler.js
-@@ -9,17 +9,37 @@ let page;
+@@ -9,17 +9,47 @@ let page;
  const consoleLogs = [];
  const screenshots = new Map();
  const defaultDownloadsPath = path.join(os.homedir(), 'Downloads');
@@ -33,21 +33,15 @@ index 0844df1..ae8241e 100644
 -            deviceScaleFactor: 1,
 -        });
 -        page = await context.newPage();
-+        if (viewportConfig?.mode === 'incognito') {
-+            browser = await chromium.launch({ headless: false, channel: viewportConfig?.channel ?? 'chromium' });
-+            const context = await browser.newContext({
-+                viewportConfig: {
-+                    width: viewportConfig?.width ?? 1920,
-+                    height: viewportConfig?.height ?? 1080,
-+                },
-+                deviceScaleFactor: 1,
-+            });
 +
-+            page = await context.newPage();
++        const chromePath = viewportConfig?.channel === "chrome"
++            ? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" // Windows path to Chrome executable (default installation path)
++            : undefined;
 +
-+        } else {
++        if (viewportConfig?.mode === 'normal') {
 +            browser = await chromium.launchPersistentContext("", {
 +                headless: false,
++                ...(chromePath && { executablePath: chromePath }),
 +                channel: viewportConfig?.channel ?? 'chromium',
 +                viewportConfig: {
 +                    width: viewportConfig?.width ?? 1920,
@@ -57,13 +51,29 @@ index 0844df1..ae8241e 100644
 +
 +            const pages = browser.pages();
 +            page = pages[0];
-+        }
 +
++        } else {
++            browser = await chromium.launch({
++                headless: false,
++                ...(chromePath && { executablePath: chromePath }),
++                channel: viewportConfig?.channel ?? 'chromium'
++            });
++
++            const context = await browser.newContext({
++                viewportConfig: {
++                    width: viewportConfig?.width ?? 1920,
++                    height: viewportConfig?.height ?? 1080,
++                },
++                deviceScaleFactor: 1,
++            });
++
++            page = await context.newPage();
++        }
 +
          page.on("console", (msg) => {
              const logEntry = `[${msg.type()}] ${msg.text()}`;
              consoleLogs.push(logEntry);
-@@ -27,6 +47,7 @@ async function ensureBrowser(viewport) {
+@@ -27,6 +57,7 @@ async function ensureBrowser(viewport) {
      }
      return page;
  }
@@ -71,7 +81,7 @@ index 0844df1..ae8241e 100644
  async function ensureApiContext(url) {
      return await request.newContext({
          baseURL: url,
-@@ -42,6 +63,8 @@ export async function handleToolCall(name, args, server) {
+@@ -42,6 +73,8 @@ export async function handleToolCall(name, args, server) {
      // Only launch browser if the tool requires browser interaction
      if (requiresBrowser) {
          page = await ensureBrowser({
@@ -80,7 +90,7 @@ index 0844df1..ae8241e 100644
              width: args.width,
              height: args.height
          });
-@@ -59,18 +82,18 @@ export async function handleToolCall(name, args, server) {
+@@ -59,18 +92,18 @@ export async function handleToolCall(name, args, server) {
                  });
                  return {
                      content: [{
@@ -105,7 +115,7 @@ index 0844df1..ae8241e 100644
                      isError: true,
                  };
              }
-@@ -85,9 +108,9 @@ export async function handleToolCall(name, args, server) {
+@@ -85,9 +118,9 @@ export async function handleToolCall(name, args, server) {
                      if (!element) {
                          return {
                              content: [{
@@ -118,7 +128,7 @@ index 0844df1..ae8241e 100644
                              isError: true
                          };
                      }
-@@ -135,9 +158,9 @@ export async function handleToolCall(name, args, server) {
+@@ -135,9 +168,9 @@ export async function handleToolCall(name, args, server) {
              catch (error) {
                  return {
                      content: [{
@@ -131,7 +141,7 @@ index 0844df1..ae8241e 100644
                      isError: true,
                  };
              }
-@@ -147,18 +170,18 @@ export async function handleToolCall(name, args, server) {
+@@ -147,18 +180,18 @@ export async function handleToolCall(name, args, server) {
                  await page.click(args.selector);
                  return {
                      content: [{
@@ -156,7 +166,7 @@ index 0844df1..ae8241e 100644
                      isError: true,
                  };
              }
-@@ -168,18 +191,18 @@ export async function handleToolCall(name, args, server) {
+@@ -168,18 +201,18 @@ export async function handleToolCall(name, args, server) {
                  await page.fill(args.selector, args.value);
                  return {
                      content: [{
@@ -181,7 +191,7 @@ index 0844df1..ae8241e 100644
                      isError: true,
                  };
              }
-@@ -189,18 +212,18 @@ export async function handleToolCall(name, args, server) {
+@@ -189,18 +222,18 @@ export async function handleToolCall(name, args, server) {
                  await page.selectOption(args.selector, args.value);
                  return {
                      content: [{
@@ -206,7 +216,7 @@ index 0844df1..ae8241e 100644
                      isError: true,
                  };
              }
-@@ -210,18 +233,18 @@ export async function handleToolCall(name, args, server) {
+@@ -210,18 +243,18 @@ export async function handleToolCall(name, args, server) {
                  await page.hover(args.selector);
                  return {
                      content: [{
@@ -231,7 +241,7 @@ index 0844df1..ae8241e 100644
                      isError: true,
                  };
              }
-@@ -259,9 +282,9 @@ export async function handleToolCall(name, args, server) {
+@@ -259,9 +292,9 @@ export async function handleToolCall(name, args, server) {
              catch (error) {
                  return {
                      content: [{
@@ -244,7 +254,7 @@ index 0844df1..ae8241e 100644
                      isError: true,
                  };
              }
-@@ -270,17 +293,17 @@ export async function handleToolCall(name, args, server) {
+@@ -270,17 +303,17 @@ export async function handleToolCall(name, args, server) {
                  var response = await apiContext.get(args.url);
                  return {
                      content: [{
@@ -273,7 +283,7 @@ index 0844df1..ae8241e 100644
                      ],
                      isError: false,
                  };
-@@ -288,9 +311,9 @@ export async function handleToolCall(name, args, server) {
+@@ -288,9 +321,9 @@ export async function handleToolCall(name, args, server) {
              catch (error) {
                  return {
                      content: [{
@@ -286,7 +296,7 @@ index 0844df1..ae8241e 100644
                      isError: true,
                  };
              }
-@@ -305,26 +328,26 @@ export async function handleToolCall(name, args, server) {
+@@ -305,26 +338,26 @@ export async function handleToolCall(name, args, server) {
                  var response = await apiContext.post(args.url, data);
                  return {
                      content: [{
@@ -327,7 +337,7 @@ index 0844df1..ae8241e 100644
                      isError: true,
                  };
              }
-@@ -339,25 +362,25 @@ export async function handleToolCall(name, args, server) {
+@@ -339,25 +372,25 @@ export async function handleToolCall(name, args, server) {
                  var response = await apiContext.put(args.url, data);
                  return {
                      content: [{
@@ -366,7 +376,7 @@ index 0844df1..ae8241e 100644
                      isError: true,
                  };
              }
-@@ -366,22 +389,22 @@ export async function handleToolCall(name, args, server) {
+@@ -366,22 +399,22 @@ export async function handleToolCall(name, args, server) {
                  var response = await apiContext.delete(args.url);
                  return {
                      content: [{
@@ -399,7 +409,7 @@ index 0844df1..ae8241e 100644
                      isError: true,
                  };
              }
-@@ -396,33 +419,33 @@ export async function handleToolCall(name, args, server) {
+@@ -396,33 +429,33 @@ export async function handleToolCall(name, args, server) {
                  var response = await apiContext.patch(args.url, data);
                  return {
                      content: [{
