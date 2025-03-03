@@ -1,21 +1,26 @@
 diff --git a/node_modules/@executeautomation/playwright-mcp-server/dist/tools.js b/node_modules/@executeautomation/playwright-mcp-server/dist/tools.js
-index a5a3ca4..d0b8643 100644
+index a5a3ca4..aad3652 100644
 --- a/node_modules/@executeautomation/playwright-mcp-server/dist/tools.js
 +++ b/node_modules/@executeautomation/playwright-mcp-server/dist/tools.js
-@@ -6,6 +6,8 @@ export function createToolDefinitions() {
+@@ -6,6 +6,9 @@ export function createToolDefinitions() {
              inputSchema: {
                  type: "object",
                  properties: {
 +                    channel: { type: "string", description: "Channel to use for browser instance" },
 +                    mode: { type: "string", description: "Mode to use for browser instance(default: incognito)" },
++                    isMobile: { type: "boolean", description: "Emulate mobile device (default: false)" },
                      url: { type: "string" },
                      width: { type: "number", description: "Viewport width in pixels (default: 1920)" },
                      height: { type: "number", description: "Viewport height in pixels (default: 1080)" },
 diff --git a/node_modules/@executeautomation/playwright-mcp-server/dist/toolsHandler.js b/node_modules/@executeautomation/playwright-mcp-server/dist/toolsHandler.js
-index 0844df1..343fbdb 100644
+index 0844df1..2cc926d 100644
 --- a/node_modules/@executeautomation/playwright-mcp-server/dist/toolsHandler.js
 +++ b/node_modules/@executeautomation/playwright-mcp-server/dist/toolsHandler.js
-@@ -9,17 +9,64 @@ let page;
+@@ -6,20 +6,69 @@ import * as path from 'path';
+ // Global state
+ let browser;
+ let page;
++let chromePath;
  const consoleLogs = [];
  const screenshots = new Map();
  const defaultDownloadsPath = path.join(os.homedir(), 'Downloads');
@@ -33,7 +38,6 @@ index 0844df1..343fbdb 100644
 -            deviceScaleFactor: 1,
 -        });
 -        page = await context.newPage();
-+        let chromePath;
 +
 +        if (viewportConfig?.channel === 'chrome') {
 +            const platform = os.platform();
@@ -54,16 +58,19 @@ index 0844df1..343fbdb 100644
 +        } else {
 +            chromePath = undefined; // Default to Playwright’s Chromium
 +        }
++        const viewport = {
++            width: viewportConfig?.width ?? (viewportConfig?.isMobile ? 375 : 1920),
++            height: viewportConfig?.height ?? (viewportConfig?.isMobile ? 812 : 1080),
++        };
++        const userAgent = viewportConfig?.isMobile ? 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1' : undefined;
 +
 +        if (viewportConfig?.mode === 'normal') {
 +            browser = await chromium.launchPersistentContext("", {
 +                headless: false,
 +                ...(chromePath && { executablePath: chromePath }),
 +                channel: viewportConfig?.channel ?? 'chromium',
-+                viewportConfig: {
-+                    width: viewportConfig?.width ?? 1920,
-+                    height: viewportConfig?.height ?? 1080,
-+                },
++                viewport: viewport,
++                userAgent: userAgent,
 +            });
 +
 +            const pages = browser.pages();
@@ -77,11 +84,10 @@ index 0844df1..343fbdb 100644
 +            });
 +
 +            const context = await browser.newContext({
-+                viewportConfig: {
-+                    width: viewportConfig?.width ?? 1920,
-+                    height: viewportConfig?.height ?? 1080,
-+                },
++                viewport,
++                userAgent: userAgent,
 +                deviceScaleFactor: 1,
++                isMobile: viewportConfig?.isMobile ?? false,
 +            });
 +
 +            page = await context.newPage();
@@ -90,7 +96,7 @@ index 0844df1..343fbdb 100644
          page.on("console", (msg) => {
              const logEntry = `[${msg.type()}] ${msg.text()}`;
              consoleLogs.push(logEntry);
-@@ -27,6 +74,7 @@ async function ensureBrowser(viewport) {
+@@ -27,6 +76,7 @@ async function ensureBrowser(viewport) {
      }
      return page;
  }
@@ -98,16 +104,17 @@ index 0844df1..343fbdb 100644
  async function ensureApiContext(url) {
      return await request.newContext({
          baseURL: url,
-@@ -42,6 +90,8 @@ export async function handleToolCall(name, args, server) {
+@@ -42,6 +92,9 @@ export async function handleToolCall(name, args, server) {
      // Only launch browser if the tool requires browser interaction
      if (requiresBrowser) {
          page = await ensureBrowser({
 +            channel: args.channel,
 +            mode: args.mode,
++            isMobile: args.isMobile,
              width: args.width,
              height: args.height
          });
-@@ -59,18 +109,18 @@ export async function handleToolCall(name, args, server) {
+@@ -59,18 +112,18 @@ export async function handleToolCall(name, args, server) {
                  });
                  return {
                      content: [{
@@ -132,7 +139,7 @@ index 0844df1..343fbdb 100644
                      isError: true,
                  };
              }
-@@ -85,9 +135,9 @@ export async function handleToolCall(name, args, server) {
+@@ -85,9 +138,9 @@ export async function handleToolCall(name, args, server) {
                      if (!element) {
                          return {
                              content: [{
@@ -145,7 +152,7 @@ index 0844df1..343fbdb 100644
                              isError: true
                          };
                      }
-@@ -135,9 +185,9 @@ export async function handleToolCall(name, args, server) {
+@@ -135,9 +188,9 @@ export async function handleToolCall(name, args, server) {
              catch (error) {
                  return {
                      content: [{
@@ -158,7 +165,7 @@ index 0844df1..343fbdb 100644
                      isError: true,
                  };
              }
-@@ -147,18 +197,18 @@ export async function handleToolCall(name, args, server) {
+@@ -147,18 +200,18 @@ export async function handleToolCall(name, args, server) {
                  await page.click(args.selector);
                  return {
                      content: [{
@@ -183,7 +190,7 @@ index 0844df1..343fbdb 100644
                      isError: true,
                  };
              }
-@@ -168,18 +218,18 @@ export async function handleToolCall(name, args, server) {
+@@ -168,18 +221,18 @@ export async function handleToolCall(name, args, server) {
                  await page.fill(args.selector, args.value);
                  return {
                      content: [{
@@ -208,7 +215,7 @@ index 0844df1..343fbdb 100644
                      isError: true,
                  };
              }
-@@ -189,18 +239,18 @@ export async function handleToolCall(name, args, server) {
+@@ -189,18 +242,18 @@ export async function handleToolCall(name, args, server) {
                  await page.selectOption(args.selector, args.value);
                  return {
                      content: [{
@@ -233,7 +240,7 @@ index 0844df1..343fbdb 100644
                      isError: true,
                  };
              }
-@@ -210,18 +260,18 @@ export async function handleToolCall(name, args, server) {
+@@ -210,18 +263,18 @@ export async function handleToolCall(name, args, server) {
                  await page.hover(args.selector);
                  return {
                      content: [{
@@ -258,7 +265,7 @@ index 0844df1..343fbdb 100644
                      isError: true,
                  };
              }
-@@ -259,9 +309,9 @@ export async function handleToolCall(name, args, server) {
+@@ -259,9 +312,9 @@ export async function handleToolCall(name, args, server) {
              catch (error) {
                  return {
                      content: [{
@@ -271,7 +278,7 @@ index 0844df1..343fbdb 100644
                      isError: true,
                  };
              }
-@@ -270,17 +320,17 @@ export async function handleToolCall(name, args, server) {
+@@ -270,17 +323,17 @@ export async function handleToolCall(name, args, server) {
                  var response = await apiContext.get(args.url);
                  return {
                      content: [{
@@ -300,7 +307,7 @@ index 0844df1..343fbdb 100644
                      ],
                      isError: false,
                  };
-@@ -288,9 +338,9 @@ export async function handleToolCall(name, args, server) {
+@@ -288,9 +341,9 @@ export async function handleToolCall(name, args, server) {
              catch (error) {
                  return {
                      content: [{
@@ -313,7 +320,7 @@ index 0844df1..343fbdb 100644
                      isError: true,
                  };
              }
-@@ -305,26 +355,26 @@ export async function handleToolCall(name, args, server) {
+@@ -305,26 +358,26 @@ export async function handleToolCall(name, args, server) {
                  var response = await apiContext.post(args.url, data);
                  return {
                      content: [{
@@ -354,7 +361,7 @@ index 0844df1..343fbdb 100644
                      isError: true,
                  };
              }
-@@ -339,25 +389,25 @@ export async function handleToolCall(name, args, server) {
+@@ -339,25 +392,25 @@ export async function handleToolCall(name, args, server) {
                  var response = await apiContext.put(args.url, data);
                  return {
                      content: [{
@@ -393,7 +400,7 @@ index 0844df1..343fbdb 100644
                      isError: true,
                  };
              }
-@@ -366,22 +416,22 @@ export async function handleToolCall(name, args, server) {
+@@ -366,22 +419,22 @@ export async function handleToolCall(name, args, server) {
                  var response = await apiContext.delete(args.url);
                  return {
                      content: [{
@@ -426,7 +433,7 @@ index 0844df1..343fbdb 100644
                      isError: true,
                  };
              }
-@@ -396,33 +446,33 @@ export async function handleToolCall(name, args, server) {
+@@ -396,33 +449,33 @@ export async function handleToolCall(name, args, server) {
                  var response = await apiContext.patch(args.url, data);
                  return {
                      content: [{
