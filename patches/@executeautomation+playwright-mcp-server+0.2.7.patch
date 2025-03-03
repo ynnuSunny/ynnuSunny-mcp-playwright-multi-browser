@@ -13,7 +13,7 @@ index a5a3ca4..aad3652 100644
                      width: { type: "number", description: "Viewport width in pixels (default: 1920)" },
                      height: { type: "number", description: "Viewport height in pixels (default: 1080)" },
 diff --git a/node_modules/@executeautomation/playwright-mcp-server/dist/toolsHandler.js b/node_modules/@executeautomation/playwright-mcp-server/dist/toolsHandler.js
-index 0844df1..2cc926d 100644
+index 0844df1..a979d39 100644
 --- a/node_modules/@executeautomation/playwright-mcp-server/dist/toolsHandler.js
 +++ b/node_modules/@executeautomation/playwright-mcp-server/dist/toolsHandler.js
 @@ -6,20 +6,69 @@ import * as path from 'path';
@@ -27,7 +27,7 @@ index 0844df1..2cc926d 100644
 -async function ensureBrowser(viewport) {
 +
 +
-+async function ensureBrowser(viewportConfig) {
++async function ensureBrowser(browserConfig) {
      if (!browser) {
 -        browser = await chromium.launch({ headless: false });
 -        const context = await browser.newContext({
@@ -38,8 +38,7 @@ index 0844df1..2cc926d 100644
 -            deviceScaleFactor: 1,
 -        });
 -        page = await context.newPage();
-+
-+        if (viewportConfig?.channel === 'chrome') {
++        if (browserConfig?.channel === 'chrome') {
 +            const platform = os.platform();
 +            switch (platform) {
 +                case 'win32':  // Windows
@@ -58,17 +57,18 @@ index 0844df1..2cc926d 100644
 +        } else {
 +            chromePath = undefined; // Default to Playwright’s Chromium
 +        }
-+        const viewport = {
-+            width: viewportConfig?.width ?? (viewportConfig?.isMobile ? 375 : 1920),
-+            height: viewportConfig?.height ?? (viewportConfig?.isMobile ? 812 : 1080),
-+        };
-+        const userAgent = viewportConfig?.isMobile ? 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1' : undefined;
 +
-+        if (viewportConfig?.mode === 'normal') {
++        const viewport = {
++            width: browserConfig?.width ?? (browserConfig?.isMobile ? 375 : 1920),
++            height: browserConfig?.height ?? (browserConfig?.isMobile ? 812 : 1080),
++        };
++        const userAgent = browserConfig?.isMobile ? 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1' : undefined;
++
++        if (browserConfig?.mode === 'normal') {
 +            browser = await chromium.launchPersistentContext("", {
 +                headless: false,
 +                ...(chromePath && { executablePath: chromePath }),
-+                channel: viewportConfig?.channel ?? 'chromium',
++                channel: browserConfig?.channel ?? 'chromium',
 +                viewport: viewport,
 +                userAgent: userAgent,
 +            });
@@ -80,14 +80,14 @@ index 0844df1..2cc926d 100644
 +            browser = await chromium.launch({
 +                headless: false,
 +                ...(chromePath && { executablePath: chromePath }),
-+                channel: viewportConfig?.channel ?? 'chromium'
++                channel: browserConfig?.channel ?? 'chromium'
 +            });
 +
 +            const context = await browser.newContext({
 +                viewport,
 +                userAgent: userAgent,
 +                deviceScaleFactor: 1,
-+                isMobile: viewportConfig?.isMobile ?? false,
++                isMobile: browserConfig?.isMobile ?? false,
 +            });
 +
 +            page = await context.newPage();
