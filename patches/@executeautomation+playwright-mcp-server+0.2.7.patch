@@ -1,5 +1,5 @@
 diff --git a/node_modules/@executeautomation/playwright-mcp-server/dist/tools.js b/node_modules/@executeautomation/playwright-mcp-server/dist/tools.js
-index a5a3ca4..aad3652 100644
+index a5a3ca4..5a67db8 100644
 --- a/node_modules/@executeautomation/playwright-mcp-server/dist/tools.js
 +++ b/node_modules/@executeautomation/playwright-mcp-server/dist/tools.js
 @@ -6,6 +6,9 @@ export function createToolDefinitions() {
@@ -8,15 +8,15 @@ index a5a3ca4..aad3652 100644
                  properties: {
 +                    channel: { type: "string", description: "Channel to use for browser instance" },
 +                    mode: { type: "string", description: "Mode to use for browser instance(default: incognito)" },
-+                    isMobile: { type: "boolean", description: "Emulate mobile device (default: false)" },
++                    isMobile: { type: "boolean", description: "Emulate mobile device (default: false)" },     
                      url: { type: "string" },
                      width: { type: "number", description: "Viewport width in pixels (default: 1920)" },
                      height: { type: "number", description: "Viewport height in pixels (default: 1080)" },
 diff --git a/node_modules/@executeautomation/playwright-mcp-server/dist/toolsHandler.js b/node_modules/@executeautomation/playwright-mcp-server/dist/toolsHandler.js
-index 0844df1..a979d39 100644
+index 0844df1..d9eebe8 100644
 --- a/node_modules/@executeautomation/playwright-mcp-server/dist/toolsHandler.js
 +++ b/node_modules/@executeautomation/playwright-mcp-server/dist/toolsHandler.js
-@@ -6,20 +6,69 @@ import * as path from 'path';
+@@ -6,20 +6,67 @@ import * as path from 'path';
  // Global state
  let browser;
  let page;
@@ -57,13 +57,13 @@ index 0844df1..a979d39 100644
 +        } else {
 +            chromePath = undefined; // Default to Playwright’s Chromium
 +        }
-+
++            
 +        const viewport = {
 +            width: browserConfig?.width ?? (browserConfig?.isMobile ? 375 : 1920),
 +            height: browserConfig?.height ?? (browserConfig?.isMobile ? 812 : 1080),
 +        };
 +        const userAgent = browserConfig?.isMobile ? 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1' : undefined;
-+
++            
 +        if (browserConfig?.mode === 'normal') {
 +            browser = await chromium.launchPersistentContext("", {
 +                headless: false,
@@ -72,39 +72,29 @@ index 0844df1..a979d39 100644
 +                viewport: viewport,
 +                userAgent: userAgent,
 +            });
-+
++            
 +            const pages = browser.pages();
 +            page = pages[0];
-+
 +        } else {
 +            browser = await chromium.launch({
 +                headless: false,
 +                ...(chromePath && { executablePath: chromePath }),
 +                channel: browserConfig?.channel ?? 'chromium'
 +            });
-+
++            
 +            const context = await browser.newContext({
 +                viewport,
 +                userAgent: userAgent,
 +                deviceScaleFactor: 1,
 +                isMobile: browserConfig?.isMobile ?? false,
 +            });
-+
++            
 +            page = await context.newPage();
 +        }
-+
          page.on("console", (msg) => {
              const logEntry = `[${msg.type()}] ${msg.text()}`;
              consoleLogs.push(logEntry);
-@@ -27,6 +76,7 @@ async function ensureBrowser(viewport) {
-     }
-     return page;
- }
-+
- async function ensureApiContext(url) {
-     return await request.newContext({
-         baseURL: url,
-@@ -42,6 +92,9 @@ export async function handleToolCall(name, args, server) {
+@@ -42,6 +89,9 @@ export async function handleToolCall(name, args, server) {
      // Only launch browser if the tool requires browser interaction
      if (requiresBrowser) {
          page = await ensureBrowser({
@@ -114,371 +104,3 @@ index 0844df1..a979d39 100644
              width: args.width,
              height: args.height
          });
-@@ -59,18 +112,18 @@ export async function handleToolCall(name, args, server) {
-                 });
-                 return {
-                     content: [{
--                            type: "text",
--                            text: `Navigated to ${args.url}`,
--                        }],
-+                        type: "text",
-+                        text: `Navigated to ${args.url}`,
-+                    }],
-                     isError: false,
-                 };
-             }
-             catch (error) {
-                 return {
-                     content: [{
--                            type: "text",
--                            text: `Navigation failed: ${error.message}`,
--                        }],
-+                        type: "text",
-+                        text: `Navigation failed: ${error.message}`,
-+                    }],
-                     isError: true,
-                 };
-             }
-@@ -85,9 +138,9 @@ export async function handleToolCall(name, args, server) {
-                     if (!element) {
-                         return {
-                             content: [{
--                                    type: "text",
--                                    text: `Element not found: ${args.selector}`,
--                                }],
-+                                type: "text",
-+                                text: `Element not found: ${args.selector}`,
-+                            }],
-                             isError: true
-                         };
-                     }
-@@ -135,9 +188,9 @@ export async function handleToolCall(name, args, server) {
-             catch (error) {
-                 return {
-                     content: [{
--                            type: "text",
--                            text: `Screenshot failed: ${error.message}`,
--                        }],
-+                        type: "text",
-+                        text: `Screenshot failed: ${error.message}`,
-+                    }],
-                     isError: true,
-                 };
-             }
-@@ -147,18 +200,18 @@ export async function handleToolCall(name, args, server) {
-                 await page.click(args.selector);
-                 return {
-                     content: [{
--                            type: "text",
--                            text: `Clicked: ${args.selector}`,
--                        }],
-+                        type: "text",
-+                        text: `Clicked: ${args.selector}`,
-+                    }],
-                     isError: false,
-                 };
-             }
-             catch (error) {
-                 return {
-                     content: [{
--                            type: "text",
--                            text: `Failed to click ${args.selector}: ${error.message}`,
--                        }],
-+                        type: "text",
-+                        text: `Failed to click ${args.selector}: ${error.message}`,
-+                    }],
-                     isError: true,
-                 };
-             }
-@@ -168,18 +221,18 @@ export async function handleToolCall(name, args, server) {
-                 await page.fill(args.selector, args.value);
-                 return {
-                     content: [{
--                            type: "text",
--                            text: `Filled ${args.selector} with: ${args.value}`,
--                        }],
-+                        type: "text",
-+                        text: `Filled ${args.selector} with: ${args.value}`,
-+                    }],
-                     isError: false,
-                 };
-             }
-             catch (error) {
-                 return {
-                     content: [{
--                            type: "text",
--                            text: `Failed to type ${args.selector}: ${error.message}`,
--                        }],
-+                        type: "text",
-+                        text: `Failed to type ${args.selector}: ${error.message}`,
-+                    }],
-                     isError: true,
-                 };
-             }
-@@ -189,18 +242,18 @@ export async function handleToolCall(name, args, server) {
-                 await page.selectOption(args.selector, args.value);
-                 return {
-                     content: [{
--                            type: "text",
--                            text: `Selected ${args.selector} with: ${args.value}`,
--                        }],
-+                        type: "text",
-+                        text: `Selected ${args.selector} with: ${args.value}`,
-+                    }],
-                     isError: false,
-                 };
-             }
-             catch (error) {
-                 return {
-                     content: [{
--                            type: "text",
--                            text: `Failed to select ${args.selector}: ${error.message}`,
--                        }],
-+                        type: "text",
-+                        text: `Failed to select ${args.selector}: ${error.message}`,
-+                    }],
-                     isError: true,
-                 };
-             }
-@@ -210,18 +263,18 @@ export async function handleToolCall(name, args, server) {
-                 await page.hover(args.selector);
-                 return {
-                     content: [{
--                            type: "text",
--                            text: `Hovered ${args.selector}`,
--                        }],
-+                        type: "text",
-+                        text: `Hovered ${args.selector}`,
-+                    }],
-                     isError: false,
-                 };
-             }
-             catch (error) {
-                 return {
-                     content: [{
--                            type: "text",
--                            text: `Failed to hover ${args.selector}: ${error.message}`,
--                        }],
-+                        type: "text",
-+                        text: `Failed to hover ${args.selector}: ${error.message}`,
-+                    }],
-                     isError: true,
-                 };
-             }
-@@ -259,9 +312,9 @@ export async function handleToolCall(name, args, server) {
-             catch (error) {
-                 return {
-                     content: [{
--                            type: "text",
--                            text: `Script execution failed: ${error.message}`,
--                        }],
-+                        type: "text",
-+                        text: `Script execution failed: ${error.message}`,
-+                    }],
-                     isError: true,
-                 };
-             }
-@@ -270,17 +323,17 @@ export async function handleToolCall(name, args, server) {
-                 var response = await apiContext.get(args.url);
-                 return {
-                     content: [{
--                            type: "text",
--                            text: `Performed GET Operation ${args.url}`,
--                        },
--                        {
--                            type: "text",
--                            text: `Response: ${JSON.stringify(await response.json(), null, 2)}`,
--                        },
--                        {
--                            type: "text",
--                            text: `Response code ${response.status()}`
--                        }
-+                        type: "text",
-+                        text: `Performed GET Operation ${args.url}`,
-+                    },
-+                    {
-+                        type: "text",
-+                        text: `Response: ${JSON.stringify(await response.json(), null, 2)}`,
-+                    },
-+                    {
-+                        type: "text",
-+                        text: `Response code ${response.status()}`
-+                    }
-                     ],
-                     isError: false,
-                 };
-@@ -288,9 +341,9 @@ export async function handleToolCall(name, args, server) {
-             catch (error) {
-                 return {
-                     content: [{
--                            type: "text",
--                            text: `Failed to perform GET operation on ${args.url}: ${error.message}`,
--                        }],
-+                        type: "text",
-+                        text: `Failed to perform GET operation on ${args.url}: ${error.message}`,
-+                    }],
-                     isError: true,
-                 };
-             }
-@@ -305,26 +358,26 @@ export async function handleToolCall(name, args, server) {
-                 var response = await apiContext.post(args.url, data);
-                 return {
-                     content: [{
--                            type: "text",
--                            text: `Performed POST Operation ${args.url} with data ${JSON.stringify(args.value, null, 2)}`,
--                        },
--                        {
--                            type: "text",
--                            text: `Response: ${JSON.stringify(await response.json(), null, 2)}`,
--                        },
--                        {
--                            type: "text",
--                            text: `Response code ${response.status()}`
--                        }],
-+                        type: "text",
-+                        text: `Performed POST Operation ${args.url} with data ${JSON.stringify(args.value, null, 2)}`,
-+                    },
-+                    {
-+                        type: "text",
-+                        text: `Response: ${JSON.stringify(await response.json(), null, 2)}`,
-+                    },
-+                    {
-+                        type: "text",
-+                        text: `Response code ${response.status()}`
-+                    }],
-                     isError: false,
-                 };
-             }
-             catch (error) {
-                 return {
-                     content: [{
--                            type: "text",
--                            text: `Failed to perform POST operation on ${args.url}: ${error.message}`,
--                        }],
-+                        type: "text",
-+                        text: `Failed to perform POST operation on ${args.url}: ${error.message}`,
-+                    }],
-                     isError: true,
-                 };
-             }
-@@ -339,25 +392,25 @@ export async function handleToolCall(name, args, server) {
-                 var response = await apiContext.put(args.url, data);
-                 return {
-                     content: [{
--                            type: "text",
--                            text: `Performed PUT Operation ${args.url} with data ${JSON.stringify(args.value, null, 2)}`,
--                        }, {
--                            type: "text",
--                            text: `Response: ${JSON.stringify(await response.json(), null, 2)}`,
--                        },
--                        {
--                            type: "text",
--                            text: `Response code ${response.status()}`
--                        }],
-+                        type: "text",
-+                        text: `Performed PUT Operation ${args.url} with data ${JSON.stringify(args.value, null, 2)}`,
-+                    }, {
-+                        type: "text",
-+                        text: `Response: ${JSON.stringify(await response.json(), null, 2)}`,
-+                    },
-+                    {
-+                        type: "text",
-+                        text: `Response code ${response.status()}`
-+                    }],
-                     isError: false,
-                 };
-             }
-             catch (error) {
-                 return {
-                     content: [{
--                            type: "text",
--                            text: `Failed to perform PUT operation on ${args.url}: ${error.message}`,
--                        }],
-+                        type: "text",
-+                        text: `Failed to perform PUT operation on ${args.url}: ${error.message}`,
-+                    }],
-                     isError: true,
-                 };
-             }
-@@ -366,22 +419,22 @@ export async function handleToolCall(name, args, server) {
-                 var response = await apiContext.delete(args.url);
-                 return {
-                     content: [{
--                            type: "text",
--                            text: `Performed delete Operation ${args.url}`,
--                        },
--                        {
--                            type: "text",
--                            text: `Response code ${response.status()}`
--                        }],
-+                        type: "text",
-+                        text: `Performed delete Operation ${args.url}`,
-+                    },
-+                    {
-+                        type: "text",
-+                        text: `Response code ${response.status()}`
-+                    }],
-                     isError: false,
-                 };
-             }
-             catch (error) {
-                 return {
-                     content: [{
--                            type: "text",
--                            text: `Failed to perform delete operation on ${args.url}: ${error.message}`,
--                        }],
-+                        type: "text",
-+                        text: `Failed to perform delete operation on ${args.url}: ${error.message}`,
-+                    }],
-                     isError: true,
-                 };
-             }
-@@ -396,33 +449,33 @@ export async function handleToolCall(name, args, server) {
-                 var response = await apiContext.patch(args.url, data);
-                 return {
-                     content: [{
--                            type: "text",
--                            text: `Performed PATCH Operation ${args.url} with data ${JSON.stringify(args.value, null, 2)}`,
--                        }, {
--                            type: "text",
--                            text: `Response: ${JSON.stringify(await response.json(), null, 2)}`,
--                        }, {
--                            type: "text",
--                            text: `Response code ${response.status()}`
--                        }],
-+                        type: "text",
-+                        text: `Performed PATCH Operation ${args.url} with data ${JSON.stringify(args.value, null, 2)}`,
-+                    }, {
-+                        type: "text",
-+                        text: `Response: ${JSON.stringify(await response.json(), null, 2)}`,
-+                    }, {
-+                        type: "text",
-+                        text: `Response code ${response.status()}`
-+                    }],
-                     isError: false,
-                 };
-             }
-             catch (error) {
-                 return {
-                     content: [{
--                            type: "text",
--                            text: `Failed to perform PATCH operation on ${args.url}: ${error.message}`,
--                        }],
-+                        type: "text",
-+                        text: `Failed to perform PATCH operation on ${args.url}: ${error.message}`,
-+                    }],
-                     isError: true,
-                 };
-             }
-         default:
-             return {
-                 content: [{
--                        type: "text",
--                        text: `Unknown tool: ${name}`,
--                    }],
-+                    type: "text",
-+                    text: `Unknown tool: ${name}`,
-+                }],
-                 isError: true,
-             };
-     }
