@@ -13,10 +13,10 @@ index a5a3ca4..5a67db8 100644
                      width: { type: "number", description: "Viewport width in pixels (default: 1920)" },
                      height: { type: "number", description: "Viewport height in pixels (default: 1080)" },
 diff --git a/node_modules/@executeautomation/playwright-mcp-server/dist/toolsHandler.js b/node_modules/@executeautomation/playwright-mcp-server/dist/toolsHandler.js
-index 0844df1..d9eebe8 100644
+index 0844df1..7b5d5ee 100644
 --- a/node_modules/@executeautomation/playwright-mcp-server/dist/toolsHandler.js
 +++ b/node_modules/@executeautomation/playwright-mcp-server/dist/toolsHandler.js
-@@ -6,20 +6,67 @@ import * as path from 'path';
+@@ -6,20 +6,68 @@ import * as path from 'path';
  // Global state
  let browser;
  let page;
@@ -25,7 +25,6 @@ index 0844df1..d9eebe8 100644
  const screenshots = new Map();
  const defaultDownloadsPath = path.join(os.homedir(), 'Downloads');
 -async function ensureBrowser(viewport) {
-+
 +
 +async function ensureBrowser(browserConfig) {
      if (!browser) {
@@ -38,6 +37,7 @@ index 0844df1..d9eebe8 100644
 -            deviceScaleFactor: 1,
 -        });
 -        page = await context.newPage();
++
 +        if (browserConfig?.channel === 'chrome') {
 +            const platform = os.platform();
 +            switch (platform) {
@@ -53,7 +53,7 @@ index 0844df1..d9eebe8 100644
 +                default:
 +                    chromePath = undefined; // Use Playwright’s built-in Chromium
 +                    break;
-+            }
++                }
 +        } else {
 +            chromePath = undefined; // Default to Playwright’s Chromium
 +        }
@@ -91,10 +91,11 @@ index 0844df1..d9eebe8 100644
 +            
 +            page = await context.newPage();
 +        }
++        
          page.on("console", (msg) => {
              const logEntry = `[${msg.type()}] ${msg.text()}`;
              consoleLogs.push(logEntry);
-@@ -42,6 +89,9 @@ export async function handleToolCall(name, args, server) {
+@@ -42,6 +90,9 @@ export async function handleToolCall(name, args, server) {
      // Only launch browser if the tool requires browser interaction
      if (requiresBrowser) {
          page = await ensureBrowser({
